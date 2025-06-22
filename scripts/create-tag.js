@@ -1,12 +1,15 @@
-// scripts/create-tag.js
-const fs = require('fs');
-const semver = require('semver');
-const { execSync } = require('child_process');
+import { exec } from 'child_process';
+import { readFile, writeFile } from 'fs/promises';
+import semver from 'semver';
+import { promisify } from 'util';
+
+const execAsync = promisify(exec);
 
 const bumpType = process.argv[2] || 'patch';
-
 const pkgPath = './package.json';
-const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+
+const pkgRaw = await readFile(pkgPath, 'utf8');
+const pkg = JSON.parse(pkgRaw);
 
 const currentVersion = pkg.version;
 const newVersion = semver.inc(currentVersion, bumpType);
@@ -22,13 +25,13 @@ console.log(`🔖 Creating git tag: ${tagName}`);
 
 // Update package.json
 pkg.version = newVersion;
-fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n');
+await writeFile(pkgPath, JSON.stringify(pkg, null, 2) + '\n');
 
 // Commit and tag
-execSync('git add package.json');
-execSync(`git commit -m "chore(release): bump version to ${newVersion}"`);
-execSync(`git tag ${tagName}`);
-execSync('git push');
-execSync(`git push origin ${tagName}`);
+await execAsync('git add package.json');
+await execAsync(`git commit -m "chore(release): bump version to ${newVersion}"`);
+await execAsync(`git tag ${tagName}`);
+await execAsync('git push');
+await execAsync(`git push origin ${tagName}`);
 
-console.log(`✅ Published ${tagName} and committed version bump.`);
+console.log(`✅ Tag ${tagName} created and pushed.`);

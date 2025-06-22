@@ -28,24 +28,6 @@ jobs:
 
       - run: npm ci
 
-      # Extract version from release tag and update package.json
-      - name: Set version from tag
-        run: |
-          TAG_NAME="${{ github.event.release.tag_name }}"
-          VERSION="${TAG_NAME#v}"
-          echo "Tag name: $TAG_NAME → Version: $VERSION"
-
-          # Update package.json version
-          node -e "const fs = require('fs'); const pkg = JSON.parse(fs.readFileSync('package.json')); pkg.version = '$VERSION'; fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2));"
-
-      # Optional: commit the change
-      - name: Commit updated version
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git commit -am "chore: update version to match release tag"
-          git push https://x-access-token:${{ secrets.GH_PAT }}@github.com/${{ github.repository }} HEAD:${GITHUB_REF_NAME}
-
       # Publish to npm
       - run: npm publish
         env:
