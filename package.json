@@ -17,7 +17,11 @@
     "lint": "eslint src --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "lint:fix": "eslint src --ext ts,tsx --report-unused-disable-directives --max-warnings 0 --fix",
     "ci": "pnpm run lint && pnpm run test && pnpm run build",
-    "test": "vitest --run"
+    "test": "vitest --run",
+    "tag:create": "node scripts/create-tag.js",
+    "tag:patch": "npm run tag:create patch",
+    "tag:minor": "npm run tag:create minor",
+    "tag:major": "npm run tag:create major"
   },
   "license": "ISC",
   "peerDependencies": {
