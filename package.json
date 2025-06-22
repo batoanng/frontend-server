@@ -1,7 +1,7 @@
 {
   "name": "frontend-server",
   "author": "Ba Toan Nguyen",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "type": "module",
   "types": "./dist/src/index.d.ts",
   "main": "./dist/frontend-server.js",
