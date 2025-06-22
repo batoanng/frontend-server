@@ -1,3 +1,4 @@
+import { type OnProxyResCallback } from 'http-proxy-middleware/dist/types';
 
 export type CorsOptions = {
   /**
@@ -10,7 +11,7 @@ export type ProxyOptions = {
   /**
    * Optional callback to invoke after all proxied API calls have received a response.
    */
-  onProxyRes?: Function;
+  onProxyRes?: OnProxyResCallback;
 };
 
 export type IndexHtmlOptions = {

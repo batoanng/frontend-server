@@ -1,4 +1,4 @@
-import { CspElement } from '@server/types';
+import { CspElement } from '@/types';
 
 export const defaultSrcElements: CspElement[] = [{ element: 'default-src' }, { element: "'self'" }];
 
