@@ -9,8 +9,8 @@ import { type Request, type Response } from 'http-proxy-middleware/dist/types';
 import { contentType } from 'mime-types';
 import { extname, join } from 'path';
 
-import { cspApiElements, defaultAllowedMethods } from './constants';
-import { type BuildServerParams, type BuildServerReturn } from './types';
+import { cspApiElements, defaultAllowedMethods } from '@/constants';
+import { type BuildServerParams, type BuildServerReturn } from '@/types';
 import {
   createAppPathFactory,
   generateClientEnvScript,
@@ -18,7 +18,7 @@ import {
   generateCspSha256,
   getNewRelicScriptAndSha256,
   loadIndexHtml,
-} from './utils';
+} from '@/utils';
 
 export const buildServer = (params: BuildServerParams): BuildServerReturn => {
   validateOptions();
@@ -172,8 +172,6 @@ export const buildServer = (params: BuildServerParams): BuildServerReturn => {
   });
 
   return { server, setApiCsp, handleProxyRes };
-
-  //////////
 
   function getJsonConfigCode(useJson: boolean, globalVarName: string): [string, string] {
     if (!useJson) return ['', ''];

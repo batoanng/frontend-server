@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 
-import { generateClientEnvScript } from '../generateClientEnvScript';
+import { generateClientEnvScript } from '@/utils';
 
 describe('generateClientEnvScript', () => {
   const envVariables: Record<string, string> = { env: 'test' };

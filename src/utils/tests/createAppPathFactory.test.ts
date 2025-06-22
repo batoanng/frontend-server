@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 
-import { createAppPathFactory } from '../createAppPathFactory';
+import { createAppPathFactory } from '@/utils';
 
 describe('createAppPathFactory', () => {
   const relativePath = 'relative/path';

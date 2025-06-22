@@ -37,8 +37,6 @@ export const loadIndexHtml = (
     return '<html lang="en"><body>Unable to load the page you requested</body></html>';
   }
 
-  //////////
-
   function removeLegacyEnvInjectionSite(html: string) {
     const updatedHtml = html.replace(/<script.+?window.process = { env: { VITE_ENVIRONMENT:.+?\/script>/i, '');
     if (updatedHtml.length != html.length) {

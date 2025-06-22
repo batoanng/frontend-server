@@ -1,8 +1,9 @@
-import { type BuildServerNewRelicConfig, type NewRelicConfig } from '@server/types';
-import { generateCspSha256 } from '@server/utils';
 import { readFileSync } from 'fs';
 import { dirname, resolve } from 'path';
 import { fileURLToPath } from 'url';
+
+import { type BuildServerNewRelicConfig, type NewRelicConfig } from '@/types';
+import { generateCspSha256 } from '@/utils';
 
 export const getNewRelicScriptAndSha256 = (
   config?: BuildServerNewRelicConfig,

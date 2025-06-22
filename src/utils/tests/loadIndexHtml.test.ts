@@ -2,8 +2,7 @@ import { PathLike, PathOrFileDescriptor, existsSync, readFileSync } from 'fs';
 import path from 'path';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 
-import { generateCspSha256 } from '../csp';
-import { loadIndexHtml } from '../loadIndexHtml';
+import { generateCspSha256, loadIndexHtml } from '@/utils';
 
 vi.mock('fs');
 
@@ -181,9 +180,6 @@ describe('loadIndexHtml', () => {
       appUrlPrefix: '/google',
       environment: 'sit',
       useProfileConnect: true,
-      logoutUrlOverride: 'https://myservicensw-account-ui.staging.my.testservicensw.net/api/auth/logout',
-      serviceNswAccountUrl: 'https://myservicensw-account-ui.staging.my.testservicensw.net/',
-      authority: 'https://api-psm.g.testservicensw.net/.well-known/openid-configuration',
       oidcs: [
         {
           clientId: '6xIPhGodliFs1WgPLTZe3DmNDQeuAX7L',
@@ -231,7 +227,7 @@ describe('loadIndexHtml', () => {
       const generatedEnvSha = generateCspSha256(clientEnvCode);
       expect(generatedEnvSha).toBe(`'sha256-OIzt0JrnQ7zN+Q2ZsgJ/NeLWBVAg0qWNuRx5bvBTGkU='`);
       const generatedConfigSha = generateCspSha256(expectedConfigScript);
-      expect(generatedConfigSha).toBe(`'sha256-r9YrHntqKnp3hfkuFbfBTrAy+swEFN6IRP7F6Rtnxgo='`);
+      expect(generatedConfigSha).toBe(`'sha256-RPXMbOUnrFW4W9mkv+oA4Dtp6n/kOlV0mR2nI8tEURE='`);
     });
   });
 });

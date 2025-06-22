@@ -39,6 +39,4 @@ export type CspService =
   | 'hotjar'
   | 'newrelic'
   | 'power-bi'
-  | 'snsw'
-  | 'snsw-fonts'
   | 'tutd';

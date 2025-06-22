@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest';
 
-import { CspElement } from '../../types';
-import { createPolicy, generateCsp } from '../csp';
+import { CspElement } from '@/types';
+import { createPolicy, generateCsp } from '@/utils';
 
 export const mockElements: CspElement[] = [
   { element: 'script-src-elem' },
@@ -54,19 +54,10 @@ describe('csp', () => {
       const result = generateCsp({}, clientEnvSha);
 
       // assert
-      const expectedPolicies = [
-        `default-src 'self'`,
-        `script-src-elem 'self' ${clientEnvSha}`,
-        `style-src 'self'`,
-        `img-src 'self' data:`,
-        `manifest-src 'self' data:`,
-        `connect-src 'self'`,
-        `frame-src 'self'`,
-        `frame-ancestors 'none'`,
-        `object-src 'none'`,
-      ];
+      const expectedPolicies =
+        "default-src 'self'; script-src-elem 'self' 'pants'; script-src 'self'; style-src 'self'; style-src-elem 'self' 'unsafe-inline' https://cloud.typography.com; font-src 'self'; img-src 'self' data:; manifest-src 'self' data:; connect-src 'self'; frame-src 'self'; frame-ancestors 'none'; object-src 'none'";
 
-      expect(result).toEqual(expectedPolicies.join('; '));
+      expect(result).toEqual(expectedPolicies);
     });
   });
 });

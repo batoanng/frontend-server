@@ -20,8 +20,8 @@
     "baseUrl": ".",
     "types": ["vite/client", "node"],
     "paths": {
-      "@server/*": ["./src/*"]
-    }
+      "@/*": ["src/*"]
+    },
   },
   "include": ["index.ts", "src"],
   "exclude": ["node_modules"]

@@ -1,3 +1,5 @@
+import crypto from 'crypto';
+
 import {
   connectSrcElements,
   defaultSrcElements,
@@ -11,9 +13,8 @@ import {
   scriptSrcElements,
   styleSrcElemElements,
   styleSrcElements,
-} from '@server/constants';
-import { CspElement, CspOptions, CspService } from '@server/types';
-import crypto from 'crypto';
+} from '@/constants';
+import { CspElement, CspOptions, CspService } from '@/types';
 
 export const createPolicy = (
   cspElements: CspElement[],
