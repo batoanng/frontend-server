@@ -1,5 +1,9 @@
+import { BuildServerNewRelicConfig } from '@server/types/newRelic';
 import type { Express } from 'express';
-import type { CorsOptions, IndexHtmlOptions, ProxyOptions, BuildServerNewRelicConfig, CspOptions } from '@server/types';
+import type { OnProxyResCallback, Response } from 'http-proxy-middleware/dist/types';
+
+import type { CspOptions } from './csp';
+import type { CorsOptions, IndexHtmlOptions, ProxyOptions } from './options';
 
 export type BuildServerParams = {
   /**
@@ -24,11 +28,6 @@ export type BuildServerParams = {
    * Specifies the URL of the server which is running the actual API for your application.
    */
   targetServerUrl: string;
-
-  /**
-   * Server to forward `/payment/complete` requests to. If not defined, requests will not be forwarded.
-   */
-  paymentsTargetServer?: string;
 
   /**
    * The base path for your built client assets. Static resources will be served from this base path.
@@ -65,12 +64,6 @@ export type BuildServerParams = {
    * Defaults to `['GET', 'PUT', 'PATCH', 'POST', 'DELETE']`
    */
   allowedMethods?: string[];
-
-  /**
-   * Adds /oidc/logout endpoint that serves a transparent image, required by SNSW SLO (Single Log Out) service.
-   * SNSW SLO calls the logout endpoint on all logged-in applications even when the user logs out on another application.
-   */
-  addSnswSloEndpoint?: boolean;
 
   /**
    * Enable JSON configuration injection into index.html
@@ -112,7 +105,7 @@ export type BuildServerProxyBuilder = {
    *
    * See: https://github.com/http-party/node-http-proxy?tab=readme-ov-file#listening-for-proxy-events
    */
-  handleProxyRes: Function;
+  handleProxyRes: OnProxyResCallback;
 };
 
 export type BuildServerReturn = BuildServerProxyBuilder & {
