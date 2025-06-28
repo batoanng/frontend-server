@@ -26,7 +26,8 @@
     "tag:minor": "npm run tag:create minor",
     "tag:major": "npm run tag:create major",
     "changeset": "changeset",
-    "version-packages": "changeset version && pnpm install --lockfile-only"
+    "version-packages": "changeset version && pnpm install --lockfile-only",
+    "release": "npm run build && changeset publish"
   },
   "license": "ISC",
   "peerDependencies": {
