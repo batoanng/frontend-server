@@ -1,7 +1,7 @@
 {
   "name": "@batoanng/frontend-server",
   "author": "Ba Toan Nguyen",
-  "version": "2.0.2",
+  "version": "2.0.3",
   "publishConfig": {
     "access": "public"
   },
@@ -24,7 +24,9 @@
     "tag:create": "node scripts/create-tag.js",
     "tag:patch": "npm run tag:create patch",
     "tag:minor": "npm run tag:create minor",
-    "tag:major": "npm run tag:create major"
+    "tag:major": "npm run tag:create major",
+    "changeset": "changeset",
+    "version-packages": "changeset version && pnpm install --lockfile-only"
   },
   "license": "ISC",
   "peerDependencies": {
@@ -40,6 +42,7 @@
     }
   },
   "devDependencies": {
+    "@changesets/cli": "^2.26.2",
     "@chrisneedham/rollup-plugin-peer-deps-external": "^2.3.1",
     "@eslint/js": "^9.29.0",
     "@rollup/plugin-node-resolve": "^15.1.0",
