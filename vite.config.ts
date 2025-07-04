@@ -1,19 +1,20 @@
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
-import peerDepsExternal from '@chrisneedham/rollup-plugin-peer-deps-external';
-import { nodeResolve } from '@rollup/plugin-node-resolve';
-import { resolve } from 'path';
+import { viteConfig } from '@batoanng/vite-config';
+import path from 'path';
 import { fileURLToPath } from 'url';
-import { defineConfig } from 'vite';
-import dts from 'vite-plugin-dts';
+import { mergeConfig } from 'vite';
 
-export default defineConfig({
-  // @ts-ignore nodeResolve type is not compatible with Vite
-  plugins: [peerDepsExternal(), nodeResolve(), dts({ insertTypesEntry: true })],
+export default mergeConfig(viteConfig, {
+  resolve: {
+    alias: {
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
+    },
+  },
   build: {
-    target: 'esnext',
+    target: 'es2022',
     lib: {
-      entry: resolve(__dirname, './index.ts'),
+      entry: path.resolve(__dirname, 'src/index.ts'),
+      formats: ['es'],
       name: 'frontend-server',
       fileName: 'frontend-server',
     },
@@ -21,12 +22,5 @@ export default defineConfig({
       external: ['fs', 'fs/promises', 'path', 'crypto', 'url'],
     },
     sourcemap: true,
-    minify: true,
-  },
-  resolve: {
-    alias: {
-      // for TypeScript path alias import like : @/x/y/z
-      '@': fileURLToPath(new URL('./src', import.meta.url)),
-    },
   },
 });
