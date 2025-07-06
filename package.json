@@ -1,11 +1,11 @@
 {
   "name": "@batoanng/frontend-server",
   "author": "Ba Toan Nguyen",
-  "version": "2.1.2",
+  "version": "2.1.4",
   "publishConfig": {
     "access": "public"
   },
-  "type": "commonjs",
+  "type": "module",
   "types": "./dist/src/index.d.ts",
   "main": "./dist/frontend-server.js",
   "files": [

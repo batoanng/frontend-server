@@ -1,5 +1,17 @@
 # Changelog
 
+## 2.1.4
+
+### Patch Changes
+
+- Fix build module
+
+## 2.1.3
+
+### Patch Changes
+
+- Update to module build
+
 ## 2.1.2
 
 ### Patch Changes
