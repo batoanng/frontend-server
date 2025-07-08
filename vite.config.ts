@@ -13,8 +13,8 @@ export default defineConfig({
     target: 'esnext',
     lib: {
       entry: resolve(__dirname, './index.ts'),
-      name: 'dcs-frontend-server',
-      fileName: 'dcs-frontend-server',
+      name: 'frontend-server',
+      fileName: 'frontend-server',
     },
     rollupOptions: {
       external: ['fs', 'fs/promises', 'path', 'crypto', 'url'],
