@@ -1,7 +1,7 @@
 {
   "name": "@batoanng/frontend-server",
   "author": "Ba Toan Nguyen",
-  "version": "2.1.4",
+  "version": "2.1.5",
   "publishConfig": {
     "access": "public"
   },
@@ -29,8 +29,8 @@
     "version-packages": "changeset version && pnpm install --lockfile-only",
     "release": "npm run build && changeset publish"
   },
-  "license": "ISC",
-  "dependencies": {
+  "license": "MIT",
+  "peerDependencies": {
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
     "express": "4.21.2",
@@ -46,7 +46,6 @@
     "@batoanng/prettier-config": "1.3.0",
     "@batoanng/vite-config": "1.0.4",
     "@changesets/cli": "^2.26.2",
-    "@eslint/js": "^9.29.0",
     "@types/cors": "^2.8.14",
     "@types/express": "4.17.21",
     "@types/http-proxy": "^1.17.12",
@@ -59,9 +58,7 @@
     "eslint-plugin-prettier": "^4.2.1",
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-react-refresh": "^0.4.1",
-    "globals": "^16.2.0",
     "prettier": "^2.8.8",
-    "semver": "^7.7.2",
     "ts-node": "^10.9.1",
     "typescript": "^5.1.6",
     "typescript-eslint": "^8.34.1",

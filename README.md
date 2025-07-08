@@ -1,5 +1,9 @@
 # Frontend Server
 
+[![install size](https://packagephobia.com/badge?p=%40batoanng%2Ffrontend-server)](https://packagephobia.com/result?p=%40batoanng%2Ffrontend-server)
+
+---
+
 Does most of the heavy-lifting for front-end `server.js` applications. Proxies all requests to the API to a target server, catering for CORS, CSP, and HSTS. Optionally forwards payment completion responses to the Forms API.
 
 ## Usage

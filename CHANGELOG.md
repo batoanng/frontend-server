@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.1.5
+
+### Patch Changes
+
+- Fix build package
+
 ## 2.1.4
 
 ### Patch Changes

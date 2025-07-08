@@ -1,18 +1,13 @@
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
-import peerDepsExternal from '@chrisneedham/rollup-plugin-peer-deps-external';
-import { nodeResolve } from '@rollup/plugin-node-resolve';
-import { resolve } from 'path';
+import { viteConfig } from '@batoanng/vite-config';
+import { mergeConfig } from 'vite';
 import { fileURLToPath } from 'url';
-import { defineConfig } from 'vite';
-import dts from 'vite-plugin-dts';
+import path from 'path';
 
-export default defineConfig({
-  plugins: [peerDepsExternal(), nodeResolve(), dts({ insertTypesEntry: true })],
+export default mergeConfig(viteConfig, {
   build: {
     target: 'esnext',
     lib: {
-      entry: resolve(__dirname, './index.ts'),
+      entry: path.resolve(__dirname, 'src/index.ts'),
       name: 'frontend-server',
       fileName: 'frontend-server',
     },
