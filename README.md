@@ -8,6 +8,10 @@ Does most of the heavy-lifting for front-end `server.js` applications. Proxies a
 
 ## Usage
 
+```sh
+npm install @batoanng/frontend-server # or yarn, pnpm
+```
+
 You can configure your own front-end server using code something as follows:
 
 ```ts
