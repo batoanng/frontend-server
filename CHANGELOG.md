@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.2.1
+
+### Patch Changes
+
+- Update build package
+
 ## 2.2.0
 
 ### Minor Changes
