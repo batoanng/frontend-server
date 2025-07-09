@@ -1,7 +1,7 @@
 {
   "name": "@batoanng/frontend-server",
   "author": "Ba Toan Nguyen",
-  "version": "2.1.6",
+  "version": "2.2.0",
   "publishConfig": {
     "access": "public"
   },
