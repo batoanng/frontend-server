@@ -121,6 +121,8 @@ export const buildServer = (params: BuildServerParams): BuildServerReturn => {
   });
 
   const apiKey = buildAppPath('/api');
+  const graphqlKey = buildAppPath('/graphql');
+
   server.use(
     apiKey,
     createProxyMiddleware({
@@ -128,6 +130,7 @@ export const buildServer = (params: BuildServerParams): BuildServerReturn => {
       target: targetServerUrl,
       pathRewrite: {
         [apiKey]: '/api',
+        [graphqlKey]: '/graphql',
       },
       logLevel: 'debug',
       onProxyRes: (proxyRes, req, res) => {
