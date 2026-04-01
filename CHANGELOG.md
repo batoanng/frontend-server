@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.4.0
+
+### Minor Changes
+
+- Add rate limiting
+
 ## 2.3.0
 
 ### Minor Changes
