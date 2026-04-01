@@ -4,7 +4,7 @@ import type { OnProxyResCallback, Response } from 'http-proxy-middleware/dist/ty
 import { BuildServerNewRelicConfig } from '@/types/newRelic';
 
 import type { CspOptions } from './csp';
-import type { CorsOptions, IndexHtmlOptions, ProxyOptions } from './options';
+import type { CorsOptions, IndexHtmlOptions, ProxyOptions, RateLimitOptions } from './options';
 
 export type BuildServerParams = {
   /**
@@ -54,6 +54,11 @@ export type BuildServerParams = {
    * Configuration options for the automatically created proxies.
    */
   proxyOptions?: ProxyOptions;
+
+  /**
+   * Configuration options for the built-in rate limiter and diagnostics endpoint.
+   */
+  rateLimitOptions?: RateLimitOptions;
 
   /**
    * Configuration parameters for New Relic. If omitted, the New Relic script will not be served.

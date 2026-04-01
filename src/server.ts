@@ -1,16 +1,17 @@
 import cors from 'cors';
 import dotenv from 'dotenv';
-import express from 'express';
+import express, { type Request as ExpressRequest, type Response as ExpressResponse } from 'express';
 import { existsSync, readFileSync } from 'fs';
 import { readFile } from 'fs/promises';
 import { type IncomingMessage, type OutgoingHttpHeader } from 'http';
 import { createProxyMiddleware } from 'http-proxy-middleware';
-import { type Request, type Response } from 'http-proxy-middleware/dist/types';
+import { type Request as ProxyRequest, type Response as ProxyResponse } from 'http-proxy-middleware/dist/types';
 import { contentType } from 'mime-types';
 import { extname, join } from 'path';
 
 import { cspApiElements, defaultAllowedMethods } from '@/constants';
 import { type BuildServerParams, type BuildServerReturn } from '@/types';
+import { RATE_LIMIT_ALGORITHM, createLeakyBucketRateLimiter } from '@/utils/rateLimit';
 import {
   createAppPathFactory,
   generateClientEnvScript,
@@ -20,9 +21,10 @@ import {
   loadIndexHtml,
 } from '@/utils';
 
-export const buildServer = (params: BuildServerParams): BuildServerReturn => {
-  validateOptions();
+const defaultRateLimitDetailsPath = '/details';
+const defaultRateLimitRequestsPerSecond = 100;
 
+export const buildServer = (params: BuildServerParams): BuildServerReturn => {
   const {
     nodeEnv = 'development',
     enableExpressStackTraces = false,
@@ -33,12 +35,20 @@ export const buildServer = (params: BuildServerParams): BuildServerReturn => {
     cspOptions = {},
     corsOptions,
     proxyOptions = {},
+    rateLimitOptions = {},
     newRelic,
     allowedMethods = defaultAllowedMethods,
     useJsonConfiguration = false,
     configure,
     blacklistPaths = [],
   } = params;
+  const rateLimitEnabled = rateLimitOptions.enabled ?? true;
+  const rateLimitRequestsPerSecond = rateLimitOptions.requestsPerSecond ?? defaultRateLimitRequestsPerSecond;
+  const rateLimitBucketCapacity = rateLimitOptions.bucketCapacity ?? rateLimitRequestsPerSecond;
+  const detailsPath = rateLimitOptions.detailsPath ?? defaultRateLimitDetailsPath;
+  const rateLimitKeyGenerator = rateLimitOptions.keyGenerator ?? ((req: ExpressRequest) => req.ip);
+
+  validateOptions();
 
   const disableStackTraces = !enableExpressStackTraces || /prod|uat/i.test(nodeEnv);
 
@@ -51,6 +61,13 @@ export const buildServer = (params: BuildServerParams): BuildServerReturn => {
   }
 
   const buildAppPath = createAppPathFactory(appPrefix);
+  let rateLimiter: ReturnType<typeof createLeakyBucketRateLimiter> | null = null;
+  if (rateLimitEnabled) {
+    rateLimiter = createLeakyBucketRateLimiter({
+      requestsPerSecond: rateLimitRequestsPerSecond,
+      bucketCapacity: rateLimitBucketCapacity,
+    });
+  }
 
   const [clientEnvCode, clientEnvSha] = getClientEnvCode(indexOptions.globalClientEnvVariableName);
   const [jsonConfigCode, jsonConfigSha] = getJsonConfigCode(
@@ -101,6 +118,27 @@ export const buildServer = (params: BuildServerParams): BuildServerReturn => {
     res.set('Referrer-Policy', 'no-referrer-when-downgrade');
 
     next();
+  });
+
+  server.use((req, res, next) => {
+    if (!rateLimitEnabled || rateLimiter == null || shouldBypassRateLimit(req)) {
+      return next();
+    }
+
+    const key = getRateLimitKey(req);
+    const rateLimitResult = rateLimiter.check(key);
+    if (rateLimitResult.allowed) {
+      return next();
+    }
+
+    res.set('Retry-After', String(Math.max(1, Math.ceil(rateLimitResult.snapshot.retryAfterMs / 1000))));
+    return res.status(429).json({
+      error: 'Rate limit exceeded',
+      requestsPerSecond: rateLimitRequestsPerSecond,
+      bucketCapacity: rateLimitBucketCapacity,
+      retryAfterMs: rateLimitResult.snapshot.retryAfterMs,
+      remainingApprox: rateLimitResult.snapshot.remainingApprox,
+    });
   });
 
   if (blacklistPaths.length > 0) {
@@ -155,6 +193,30 @@ export const buildServer = (params: BuildServerParams): BuildServerReturn => {
     res.send('Healthy');
   });
 
+  server.get(detailsPath, (req, res) => {
+    const key = getRateLimitKey(req);
+    const currentClient =
+      rateLimitEnabled && rateLimiter != null ? rateLimiter.getSnapshot(key) : getDisabledRateLimitSnapshot(key);
+
+    res.json({
+      nodeEnv,
+      appPrefix,
+      allowedMethods,
+      rateLimit: {
+        enabled: rateLimitEnabled,
+        algorithm: RATE_LIMIT_ALGORITHM,
+        requestsPerSecond: rateLimitRequestsPerSecond,
+        bucketCapacity: rateLimitBucketCapacity,
+        bypass: {
+          methods: ['OPTIONS'],
+          paths: ['/health'],
+        },
+        trackedClientCount: rateLimiter?.getTrackedClientCount() ?? 0,
+        currentClient,
+      },
+    });
+  });
+
   server.get(['/index.html', '/', appPrefix], (_, res) => {
     writeIndexHtml(res);
   });
@@ -195,8 +257,20 @@ export const buildServer = (params: BuildServerParams): BuildServerReturn => {
   }
 
   function validateOptions() {
-    if (params.corsOptions.allowedOrigins == null || params.corsOptions.allowedOrigins.length === 0) {
+    if (corsOptions?.allowedOrigins == null || corsOptions.allowedOrigins.length === 0) {
       throw new Error(`corsOptions.allowedOrigins cannot be empty. Use '*' to allow all cross-origin requests.`);
+    }
+
+    if (!Number.isFinite(rateLimitRequestsPerSecond) || rateLimitRequestsPerSecond <= 0) {
+      throw new Error('rateLimitOptions.requestsPerSecond must be a positive number.');
+    }
+
+    if (!Number.isFinite(rateLimitBucketCapacity) || rateLimitBucketCapacity <= 0) {
+      throw new Error('rateLimitOptions.bucketCapacity must be a positive number.');
+    }
+
+    if (!detailsPath.startsWith('/')) {
+      throw new Error('rateLimitOptions.detailsPath must start with "/".');
     }
 
     console.log(`Starting frontend-server with parameters: ${JSON.stringify(params, null, '  ')}`);
@@ -245,11 +319,7 @@ export const buildServer = (params: BuildServerParams): BuildServerReturn => {
     return callback(new Error(msg), false);
   }
 
-  function setApiCsp(res: Response) {
-    return res.set('Content-Security-Policy', cspApiElements.join('; '));
-  }
-
-  function handleProxyRes(proxyRes: IncomingMessage, req: Request, res: Response) {
+  function handleProxyRes(proxyRes: IncomingMessage, req: ProxyRequest, res: ProxyResponse) {
     delete proxyRes.headers['access-control-allow-origin'];
     setApiCsp(res);
 
@@ -283,7 +353,32 @@ export const buildServer = (params: BuildServerParams): BuildServerReturn => {
     return decodeURI(relativeUri as string);
   }
 
-  function writeIndexHtml(res: Response) {
+  function shouldBypassRateLimit(req: ExpressRequest) {
+    return req.method === 'OPTIONS' || (req.method === 'GET' && req.path === '/health');
+  }
+
+  function getRateLimitKey(req: ExpressRequest) {
+    return rateLimitKeyGenerator(req) || req.ip || 'unknown';
+  }
+
+  function getDisabledRateLimitSnapshot(key: string) {
+    return {
+      key,
+      bucketLevel: 0,
+      remainingApprox: rateLimitBucketCapacity,
+      accepted: 0,
+      rejected: 0,
+      limited: false,
+      retryAfterMs: 0,
+      lastUpdatedAt: new Date().toISOString(),
+    };
+  }
+
+  function setApiCsp(res: ProxyResponse) {
+    return res.set('Content-Security-Policy', cspApiElements.join('; '));
+  }
+
+  function writeIndexHtml(res: ExpressResponse) {
     res.writeHead(200, {
       'Content-Type': 'text/html',
     });

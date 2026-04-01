@@ -68,8 +68,14 @@ const { server } = buildServer({
   newRelic: {
     applicationId: 'NR-123...'
   },
+  rateLimitOptions: {
+    requestsPerSecond: 100,
+    bucketCapacity: 100,
+    detailsPath: '/details',
+  },
   configure: (server: Express, proxyBuilder: BuildServerProxyBuilder) => {
     // Additional configuration required for Express
+    // server.set('trust proxy', true);
   },
 });
 
@@ -92,6 +98,16 @@ The CSP can be modified by passing in:
 Client side variables loaded from the client's `.env` files will automatically be injected into the HTML page and made available before the application scripts are executed. By default, the injection point for these variables replicates the legacy webpack method by using `window.process.env`, but this can be customized using the `indexOptions.globalClientEnvVariableName` parameter.
 
 The relevant SHA for the script will also be generated and added to the site's CSP settings.
+
+### Rate limiting and diagnostics
+
+Frontend Server includes a built-in leaky-bucket rate limiter for normal application traffic. By default it allows `100` requests per second per client IP with a bucket capacity of `100`.
+
+The limiter applies to static assets, index routes, proxied API requests, and custom routes added through `configure`. `OPTIONS` requests and `GET /health` bypass the limiter.
+
+Runtime diagnostics are available at `GET /details`. The response includes the active limiter configuration, the number of tracked clients, and the current caller's live bucket state.
+
+If you run behind a reverse proxy, configure Express `trust proxy` in `configure` so `req.ip` resolves to the original client IP. If you need custom client identification, provide `rateLimitOptions.keyGenerator`.
 
 ## `createClientEnvFilesPlugin`
 

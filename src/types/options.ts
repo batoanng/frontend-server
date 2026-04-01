@@ -1,3 +1,4 @@
+import type { Request as ExpressRequest } from 'express';
 import { type OnProxyResCallback } from 'http-proxy-middleware/dist/types';
 
 export type CorsOptions = {
@@ -12,6 +13,38 @@ export type ProxyOptions = {
    * Optional callback to invoke after all proxied API calls have received a response.
    */
   onProxyRes?: OnProxyResCallback;
+};
+
+export type RateLimitOptions = {
+  /**
+   * Enable or disable the built-in rate limiter.
+   * Defaults to `true`.
+   */
+  enabled?: boolean;
+
+  /**
+   * Number of requests allowed to leak from the bucket every second.
+   * Defaults to `100`.
+   */
+  requestsPerSecond?: number;
+
+  /**
+   * Maximum number of queued requests the bucket can hold before new requests are rejected.
+   * Defaults to the configured `requestsPerSecond`.
+   */
+  bucketCapacity?: number;
+
+  /**
+   * Route used to expose the current server and rate limiting diagnostics.
+   * Defaults to `/details`.
+   */
+  detailsPath?: string;
+
+  /**
+   * Optional function used to derive the client key for rate limiting.
+   * Defaults to `req.ip`.
+   */
+  keyGenerator?: (req: ExpressRequest) => string;
 };
 
 export type IndexHtmlOptions = {
