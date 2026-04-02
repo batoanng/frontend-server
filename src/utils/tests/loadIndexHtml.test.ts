@@ -89,6 +89,17 @@ describe('loadIndexHtml', () => {
         `<head><script id="global-env-settings" type="text/javascript">${clientEnvCode}</script><script id="other-script"></script></head>`
       );
     });
+
+    test('returns the original html when there is no closing head tag', () => {
+      const clientEnvCode = 'client-env-code';
+
+      vi.mocked(existsSync).mockReturnValue(true);
+      vi.mocked(readFileSync).mockReturnValue('<html><body></body></html>');
+
+      const result = loadIndexHtml('mock.html', 'mock/path', clientEnvCode);
+
+      expect(result).toBe('<html><body></body></html>');
+    });
   });
 
   describe('when passed multiple scripts', () => {
@@ -229,5 +240,16 @@ describe('loadIndexHtml', () => {
       const generatedConfigSha = generateCspSha256(expectedConfigScript);
       expect(generatedConfigSha).toBe(`'sha256-RPXMbOUnrFW4W9mkv+oA4Dtp6n/kOlV0mR2nI8tEURE='`);
     });
+  });
+
+  test('returns the fallback html if the file cannot be read', () => {
+    vi.mocked(existsSync).mockReturnValue(true);
+    vi.mocked(readFileSync).mockImplementation(() => {
+      throw new Error('Cannot read file');
+    });
+
+    const result = loadIndexHtml('mock.html', 'mock/path', 'client-env-code');
+
+    expect(result).toBe('<html lang="en"><body>Unable to load the page you requested</body></html>');
   });
 });

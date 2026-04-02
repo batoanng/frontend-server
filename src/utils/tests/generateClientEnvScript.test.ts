@@ -43,4 +43,14 @@ describe('generateClientEnvScript', () => {
       expect(envScript).toBe(`window["globals"]={"config":{"env":${JSON.stringify(envVariables)}}};`);
     });
   });
+
+  describe('when given a four-part variable name', () => {
+    test('should assign the variable to a deeply nested variable', () => {
+      const variableName = 'globals.config.env.runtime';
+
+      const envScript = generateClientEnvScript(variableName, envVariables);
+
+      expect(envScript).toBe(`window["globals"]={"config":{"env":{"runtime":${JSON.stringify(envVariables)}}}};`);
+    });
+  });
 });

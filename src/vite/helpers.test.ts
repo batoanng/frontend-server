@@ -108,6 +108,15 @@ describe('helpers', () => {
     test('generate the client env files with a different build dir', () => runFolderTest(undefined, 'build'));
     test('generate the client env files with a different src and build dir', () => runFolderTest('src/vite', 'build'));
 
+    test('generate the client env files using the deprecated buildFolderName option', () => {
+      generateTestEnvFiles();
+      ensurePath('legacy-build');
+
+      createClientEnvFilesPlugin({ validEnvironments, buildFolderName: 'legacy-build' }).generateBundle();
+
+      assertClientEnvFilesExist(validEnvironments, 'legacy-build');
+    });
+
     test('do not fail if a source file is missing', () => {
       // arrange
       generateTestEnvFiles();

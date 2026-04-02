@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest';
 
 import { CspElement } from '@/types';
-import { createPolicy, generateCsp } from '@/utils';
+import { createPolicy, generateCsp, generateCspSha256 } from '@/utils';
 
 export const mockElements: CspElement[] = [
   { element: 'script-src-elem' },
@@ -58,6 +58,32 @@ describe('csp', () => {
         "default-src 'self'; script-src-elem 'self' 'pants'; script-src 'self'; style-src 'self'; style-src-elem 'self' 'unsafe-inline' https://cloud.typography.com; font-src 'self'; img-src 'self' data:; manifest-src 'self' data:; connect-src 'self'; frame-src 'self'; frame-ancestors 'none'; object-src 'none'";
 
       expect(result).toEqual(expectedPolicies);
+    });
+
+    test('should ignore carriage returns when generating a sha', () => {
+      expect(generateCspSha256('line-one\r\nline-two')).toBe(generateCspSha256('line-one\nline-two'));
+    });
+
+    test('should include configured services and dynamic script shas', () => {
+      const result = generateCsp(
+        {
+          services: ['google-analytics', 'google-fonts'],
+          scriptSrcElements: ['https://cdn.example.com'],
+          connectSrcElements: ['https://api.example.com'],
+        },
+        `'sha256-dynamic-one'`,
+        undefined,
+        null,
+        `'sha256-dynamic-two'`
+      );
+
+      expect(result).toContain(`https://www.googletagmanager.com`);
+      expect(result).toContain(`https://*.google-analytics.com`);
+      expect(result).toContain(`https://fonts.googleapis.com`);
+      expect(result).toContain(`'sha256-dynamic-one'`);
+      expect(result).toContain(`'sha256-dynamic-two'`);
+      expect(result).toContain(`https://cdn.example.com`);
+      expect(result).toContain(`https://api.example.com`);
     });
   });
 });

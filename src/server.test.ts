@@ -1,16 +1,28 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'fs';
 import type { Request as ExpressRequest } from 'express';
 import { createServer as createHttpServer, type Server as HttpServer } from 'http';
 import { tmpdir } from 'os';
-import { join } from 'path';
+import { dirname, join } from 'path';
 
 import { afterEach, describe, expect, test } from 'vitest';
 
 import { buildServer } from '@/server';
+import { cspApiElements } from '@/constants';
 import type { BuildServerParams } from '@/types';
 
 const runningServers: HttpServer[] = [];
 const tempDirectories: string[] = [];
+
+type BuildPathOptions = {
+  includeClientEnv?: boolean;
+  includeIndexHtml?: boolean;
+  indexHtml?: string;
+  additionalFiles?: Record<string, string>;
+};
+
+type TargetServerOptions = {
+  headers?: Record<string, string>;
+};
 
 const closeServer = (server: HttpServer) =>
   new Promise<void>((resolve, reject) => {
@@ -48,26 +60,40 @@ const resolveServer = async (server: HttpServer) => {
   };
 };
 
-const createClientBuildPath = () => {
+const createClientBuildPath = ({
+  includeClientEnv = true,
+  includeIndexHtml = true,
+  indexHtml = '<html><head></head><body><script src="/app.js"></script></body></html>',
+  additionalFiles = {},
+}: BuildPathOptions = {}) => {
   const buildPath = mkdtempSync(join(tmpdir(), 'frontend-server-'));
   tempDirectories.push(buildPath);
 
-  writeFileSync(
-    join(buildPath, 'index.html'),
-    '<html><head></head><body><script src="/app.js"></script></body></html>'
-  );
+  if (includeIndexHtml) {
+    writeFileSync(join(buildPath, 'index.html'), indexHtml);
+  }
   writeFileSync(join(buildPath, 'app.js'), 'console.log("frontend-server");');
-  writeFileSync(join(buildPath, 'client.env.development'), 'VITE_RUNTIME_FLAG="enabled"\n');
+
+  if (includeClientEnv) {
+    writeFileSync(join(buildPath, 'client.env.development'), 'VITE_RUNTIME_FLAG="enabled"\n');
+  }
+
+  Object.entries(additionalFiles).forEach(([filename, content]) => {
+    const outputPath = join(buildPath, filename);
+    const directory = dirname(outputPath);
+    mkdirSync(directory, { recursive: true });
+    writeFileSync(outputPath, content);
+  });
 
   return buildPath;
 };
 
-const startTargetServer = async () => {
+const startTargetServer = async ({ headers = {} }: TargetServerOptions = {}) => {
   let requestCount = 0;
 
   const server = createHttpServer((req, res) => {
     requestCount += 1;
-    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.writeHead(200, { 'Content-Type': 'application/json', ...headers });
     res.end(
       JSON.stringify({
         path: req.url,
@@ -92,9 +118,18 @@ const startTargetServer = async () => {
   };
 };
 
-const startFrontendServer = async (overrides: Partial<BuildServerParams> = {}) => {
-  const targetServer = await startTargetServer();
-  const clientBuildPath = createClientBuildPath();
+const startFrontendServer = async (
+  overrides: Partial<BuildServerParams> = {},
+  {
+    buildPathOptions,
+    targetServerOptions,
+  }: {
+    buildPathOptions?: BuildPathOptions;
+    targetServerOptions?: TargetServerOptions;
+  } = {}
+) => {
+  const targetServer = await startTargetServer(targetServerOptions);
+  const clientBuildPath = createClientBuildPath(buildPathOptions);
 
   const { server } = buildServer({
     targetServerUrl: targetServer.baseUrl,
@@ -143,6 +178,57 @@ afterEach(async () => {
 });
 
 describe('buildServer', () => {
+  test('throws for invalid server options before startup', () => {
+    expect(() =>
+      buildServer({
+        targetServerUrl: 'http://example.test',
+        clientBuildPath: '/tmp/frontend-server',
+        corsOptions: {
+          allowedOrigins: [],
+        },
+      })
+    ).toThrow('corsOptions.allowedOrigins cannot be empty');
+
+    expect(() =>
+      buildServer({
+        targetServerUrl: 'http://example.test',
+        clientBuildPath: '/tmp/frontend-server',
+        corsOptions: {
+          allowedOrigins: ['*'],
+        },
+        rateLimitOptions: {
+          requestsPerSecond: 0,
+        },
+      })
+    ).toThrow('rateLimitOptions.requestsPerSecond must be a positive number.');
+
+    expect(() =>
+      buildServer({
+        targetServerUrl: 'http://example.test',
+        clientBuildPath: '/tmp/frontend-server',
+        corsOptions: {
+          allowedOrigins: ['*'],
+        },
+        rateLimitOptions: {
+          bucketCapacity: 0,
+        },
+      })
+    ).toThrow('rateLimitOptions.bucketCapacity must be a positive number.');
+
+    expect(() =>
+      buildServer({
+        targetServerUrl: 'http://example.test',
+        clientBuildPath: '/tmp/frontend-server',
+        corsOptions: {
+          allowedOrigins: ['*'],
+        },
+        rateLimitOptions: {
+          detailsPath: 'details',
+        },
+      })
+    ).toThrow('rateLimitOptions.detailsPath must start with "/"');
+  });
+
   test('returns default limiter diagnostics from /details', async () => {
     const { baseUrl } = await startFrontendServer();
 
@@ -168,6 +254,25 @@ describe('buildServer', () => {
     expect(body.rateLimit.currentClient.bucketLevel).toBeGreaterThan(0);
     expect(body.rateLimit.currentClient.remainingApprox).toBeLessThan(100);
     expect(Date.parse(body.rateLimit.currentClient.lastUpdatedAt)).not.toBeNaN();
+  });
+
+  test('supports a custom details path with the limiter disabled', async () => {
+    const { baseUrl } = await startFrontendServer({
+      rateLimitOptions: {
+        enabled: false,
+        detailsPath: '/status',
+      },
+    });
+
+    const response = await fetch(`${baseUrl}/status`);
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.rateLimit.enabled).toBe(false);
+    expect(body.rateLimit.trackedClientCount).toBe(0);
+    expect(body.rateLimit.currentClient.accepted).toBe(0);
+    expect(body.rateLimit.currentClient.rejected).toBe(0);
+    expect(body.rateLimit.currentClient.remainingApprox).toBe(100);
   });
 
   test('bypasses the limiter for /health', async () => {
@@ -222,6 +327,73 @@ describe('buildServer', () => {
     expect(body.rateLimit.currentClient.rejected).toBe(0);
   });
 
+  test('serves prefixed routes and rewrites prefixed api calls', async () => {
+    const { baseUrl, targetServer } = await startFrontendServer(
+      {
+        appPrefix: '/portal',
+        rateLimitOptions: {
+          enabled: false,
+        },
+      },
+      {
+        buildPathOptions: {
+          additionalFiles: {
+            'nested/info.txt': 'prefixed asset',
+          },
+        },
+      }
+    );
+
+    const indexResponse = await fetch(`${baseUrl}/portal`);
+    const assetResponse = await fetch(`${baseUrl}/portal/nested/info.txt`);
+    const apiResponse = await fetch(`${baseUrl}/portal/api/test`);
+
+    expect(indexResponse.status).toBe(200);
+    expect(await assetResponse.text()).toBe('prefixed asset');
+    expect(await apiResponse.json()).toEqual({
+      path: '/api/test',
+      method: 'GET',
+    });
+    expect(targetServer.getRequestCount()).toBe(1);
+  });
+
+  test('returns 405 for methods outside the allowed methods list', async () => {
+    const { baseUrl } = await startFrontendServer({
+      allowedMethods: ['GET'],
+      rateLimitOptions: {
+        enabled: false,
+      },
+    });
+
+    const response = await requestAsClient(baseUrl, '/health', 'client-a', {
+      method: 'POST',
+    });
+
+    expect(response.status).toBe(405);
+    expect(await response.text()).toBe('Method Not Allowed');
+  });
+
+  test('applies CORS headers for allowed origins', async () => {
+    const { baseUrl } = await startFrontendServer({
+      corsOptions: {
+        allowedOrigins: ['http://allowed.example'],
+      },
+      rateLimitOptions: {
+        enabled: false,
+      },
+    });
+
+    const response = await fetch(`${baseUrl}/details`, {
+      headers: {
+        Origin: 'http://allowed.example',
+      },
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get('access-control-allow-origin')).toBe('http://allowed.example');
+    expect(response.headers.get('access-control-allow-credentials')).toBe('true');
+  });
+
   test('limits index and static asset requests', async () => {
     const { baseUrl } = await startFrontendServer({
       rateLimitOptions: {
@@ -270,5 +442,139 @@ describe('buildServer', () => {
 
     expect(rejectedResponse.status).toBe(429);
     expect(targetServer.getRequestCount()).toBe(1);
+  });
+
+  test('runs configure before default routes and exposes proxy response hooks', async () => {
+    const { baseUrl } = await startFrontendServer(
+      {
+        corsOptions: {
+          allowedOrigins: ['http://allowed.example'],
+        },
+        rateLimitOptions: {
+          enabled: false,
+        },
+        proxyOptions: {
+          onProxyRes: (_proxyRes, _req, res) => {
+            res.set('x-proxy-hook', 'called');
+          },
+        },
+        configure: (server, proxyBuilder) => {
+          server.get('/configured', (_req, res) => {
+            proxyBuilder.setApiCsp(res);
+            res.send('configured');
+          });
+
+          server.get('/health', (_req, res) => {
+            res.send('Configured Healthy');
+          });
+        },
+      },
+      {
+        targetServerOptions: {
+          headers: {
+            'access-control-allow-origin': '*',
+          },
+        },
+      }
+    );
+
+    const allowedOrigin = 'http://allowed.example';
+    const configuredResponse = await fetch(`${baseUrl}/configured`);
+    const healthResponse = await fetch(`${baseUrl}/health`);
+    const proxyResponse = await fetch(`${baseUrl}/api/test`, {
+      headers: {
+        Origin: allowedOrigin,
+      },
+    });
+
+    expect(await configuredResponse.text()).toBe('configured');
+    expect(configuredResponse.headers.get('content-security-policy')).toBe(cspApiElements.join('; '));
+    expect(await healthResponse.text()).toBe('Configured Healthy');
+    expect(proxyResponse.headers.get('content-security-policy')).toBe(cspApiElements.join('; '));
+    expect(proxyResponse.headers.get('x-proxy-hook')).toBe('called');
+    expect(proxyResponse.headers.get('access-control-allow-origin')).toBe(allowedOrigin);
+    expect(proxyResponse.headers.get('cache-control')).toContain('no-store');
+  });
+
+  test('serves json config when runtime json configuration is enabled', async () => {
+    const { baseUrl } = await startFrontendServer(
+      {
+        useJsonConfiguration: true,
+        indexOptions: {
+          globalJsonConfigVariableName: '__RUNTIME_CONFIG__',
+        },
+        rateLimitOptions: {
+          enabled: false,
+        },
+      },
+      {
+        buildPathOptions: {
+          additionalFiles: {
+            'config.development.json': JSON.stringify({ apiUrl: 'https://api.example.com', featureFlag: true }),
+          },
+        },
+      }
+    );
+
+    const response = await fetch(`${baseUrl}/`);
+    const html = await response.text();
+
+    expect(response.status).toBe(200);
+    expect(html).toContain('window["__RUNTIME_CONFIG__"]={"apiUrl":"https://api.example.com","featureFlag":true};');
+  });
+
+  test('continues to serve the page when the client env file is missing', async () => {
+    const { baseUrl } = await startFrontendServer(
+      {
+        rateLimitOptions: {
+          enabled: false,
+        },
+      },
+      {
+        buildPathOptions: {
+          includeClientEnv: false,
+        },
+      }
+    );
+
+    const response = await fetch(`${baseUrl}/`);
+    const html = await response.text();
+
+    expect(response.status).toBe(200);
+    expect(html).toContain('window["process"]={"env":{"NODE_ENV":"production","APP_ENV":"development"}};');
+  });
+
+  test('falls back to the default error page when index.html cannot be loaded', async () => {
+    const { baseUrl } = await startFrontendServer(
+      {
+        rateLimitOptions: {
+          enabled: false,
+        },
+      },
+      {
+        buildPathOptions: {
+          includeIndexHtml: false,
+        },
+      }
+    );
+
+    const response = await fetch(`${baseUrl}/`);
+
+    expect(response.status).toBe(200);
+    expect(await response.text()).toContain('Unable to load the page you requested');
+  });
+
+  test('rejects blacklisted paths before proxying the request', async () => {
+    const { baseUrl, targetServer } = await startFrontendServer({
+      blacklistPaths: ['/api/blocked'],
+      rateLimitOptions: {
+        enabled: false,
+      },
+    });
+
+    const response = await fetch(`${baseUrl}/api/blocked`);
+
+    expect(response.status).toBe(500);
+    expect(targetServer.getRequestCount()).toBe(0);
   });
 });
